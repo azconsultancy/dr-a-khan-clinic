@@ -29,7 +29,8 @@ if($('#booking-form'))$('#booking-form').onsubmit=e=>{
  const number=String(cfg.whatsappNumber||'').replace(/[^0-9]/g,'');
  if(!/^[1-9][0-9]{9,14}$/.test(number)){status('#booking-result','WhatsApp booking will be available once the clinic confirms its WhatsApp number. Please call +91 93694 63570 to request a visit.');return;}
  if(f.preferred_date<date()){status('#booking-result','Please choose today or a future date.');return;}
- const message=['Hello Dr. A. Khan clinic, I would like to request an appointment.','Name: '+f.name,'Mobile: '+f.phone,'Visit: '+f.service,'Preferred date: '+f.preferred_date,'Preferred time: '+f.preferred_time+' IST','Please confirm availability and the consultation fee.'].join('\n');
+ const hindi=window.ClinicLanguage?.language==='hi';
+ const message=hindi?['नमस्ते डॉ. ए. खान क्लिनिक, मुझे अपॉइंटमेंट लेना है।','नाम: '+f.name,'मोबाइल: '+f.phone,'परामर्श: '+window.ClinicLanguage.t(f.service),'पसंदीदा तारीख: '+f.preferred_date,'पसंदीदा समय: '+f.preferred_time+' (भारतीय समय)','कृपया उपलब्धता और परामर्श शुल्क की पुष्टि करें।'].join('\n'):['Hello Dr. A. Khan clinic, I would like to request an appointment.','Name: '+f.name,'Mobile: '+f.phone,'Visit: '+f.service,'Preferred date: '+f.preferred_date,'Preferred time: '+f.preferred_time+' IST','Please confirm availability and the consultation fee.'].join('\n');
  const url='https://wa.me/'+number+'?text='+encodeURIComponent(message);
  status('#booking-result','Press Send in WhatsApp to submit your request. Your appointment is confirmed only after the clinic replies.');
  window.open(url,'_blank','noopener');
