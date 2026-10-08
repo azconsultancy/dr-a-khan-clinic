@@ -2,7 +2,7 @@
 window.CLINIC_CONFIG = {
   supabaseUrl: '',
   supabaseAnonKey: '',
-  whatsappNumber: '918765348423', // Temporary owner number; replace with the clinic WhatsApp number before launch.
+  whatsappNumber: '919369463570', // Clinic contact and consultation WhatsApp number.
   // Optional HTTPS link to a clinic-owned payment provider page; not a payment verification mechanism.
   paymentLink: '',
   // Manual UPI collection. Replace the dummy recipient and set preview to false before accepting money.
@@ -11,6 +11,6 @@ window.CLINIC_CONFIG = {
     preview: true,
     upiId: '',
     payeeName: 'Demo clinic recipient',
-    summaryWhatsappNumber: '918765348423'
+    summaryWhatsappNumber: '919369463570'
   }
 };
