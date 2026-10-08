@@ -43,3 +43,4 @@ body[data-page="index.html"] .whatsapp-float{display:none}
 .review-source-mark img{display:block;width:64px;height:auto;object-fit:contain}
 .reviewer-photo{width:48px;height:48px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid #ffffffb3}
 @media(max-width:760px){.topline{min-height:52px}.contact-list .clinic-hours .hours-book{width:100%;font-size:16px}.google-wordmark{width:66px}}
+.booking-hours{grid-column:1/-1;display:flex;flex-direction:column;gap:5px;background:#f3f1f8;border:1px solid #e5dfef;border-radius:14px;padding:15px 18px;margin:0 0 6px;color:#303183}.booking-hours b{font-size:14px}.booking-hours span{font-size:14px;line-height:1.5}#booking-form select:disabled{opacity:.55;cursor:not-allowed}

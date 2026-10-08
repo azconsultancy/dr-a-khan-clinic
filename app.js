@@ -15,8 +15,30 @@ function status(id,text){if($(id))$(id).textContent=text;}
 function formData(form){return Object.fromEntries(new FormData(form));}
 function button(text,action,id){return `<button type="button" data-action="${action}" data-id="${esc(id)}">${text}</button>`;}
 async function loadSlots(){if(!$('#slot-select'))return;try{const slots=live?await api('/rest/v1/slots?select=*&active=eq.true&starts_at=gte.'+encodeURIComponent(new Date().toISOString())+'&order=starts_at.asc'):demo.slots;$('#slot-select').innerHTML='<option value="">Choose a session</option>'+slots.map(s=>`<option value="${esc(s.id)}">${esc(sessionLabel(s))}${live?'':' · sample session'}</option>`).join('');if(!slots.length)$('#slot-select').innerHTML='<option value="">No sessions published — contact the clinic</option>';}catch(e){$('#slot-select').innerHTML='<option value="">Sessions unavailable — contact the clinic</option>';status('#booking-result',e.message);}}
-if($('#booking-mode'))$('#booking-mode').textContent='No sign-in needed. WhatsApp opens with your request; press Send there. The clinic confirms by replying.';
-if($('#booking-form'))$('#booking-form input[name=preferred_date]').min=date();
+// Appointment requests follow clinic hours in India, independent of visitor timezone.
+function clinicTimeOptions(day,now=new Date()){
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||new Date(day+'T00:00:00+05:30').toString()==='Invalid Date')return [];
+ if(new Date(day+'T12:00:00Z').getUTCDay()===0)return [];
+ return Array.from({length:18},(_,i)=>{const minutes=660+i*30;return String(Math.floor(minutes/60)).padStart(2,'0')+':'+String(minutes%60).padStart(2,'0');}).filter(time=>new Date(day+'T'+time+':00+05:30')>now);
+}
+function refreshBookingChoices(){
+ const form=$('#booking-form');if(!form)return;
+ const day=form.elements.preferred_date,time=form.elements.preferred_time,chosenDay=day.value,chosenTime=time.value;
+ const hi=window.ClinicLanguage?.language==='hi',locale=hi?'hi-IN':'en-IN',now=new Date();
+ day.innerHTML='';day.add(new Option(hi?'तारीख चुनें':'Choose a date',''));
+ const today=new Date(date()+'T12:00:00Z');
+ for(let i=0;i<90;i++){const d=new Date(today);d.setUTCDate(d.getUTCDate()+i);const value=d.toISOString().slice(0,10);if(clinicTimeOptions(value,now).length){day.add(new Option(d.toLocaleDateString(locale,{timeZone:'UTC',weekday:'short',day:'numeric',month:'short',year:'numeric'}),value));}}
+ day.value=[...day.options].some(o=>o.value===chosenDay)?chosenDay:'';
+ time.innerHTML='';time.add(new Option(day.value?(hi?'समय चुनें':'Choose a time'):(hi?'पहले तारीख चुनें':'Choose a date first'),''));
+ for(const value of clinicTimeOptions(day.value,now)){const label=new Date(day.value+'T'+value+':00+05:30').toLocaleTimeString(locale,{timeZone:'Asia/Kolkata',hour:'numeric',minute:'2-digit'});time.add(new Option(label,value));}
+ time.disabled=!day.value;time.value=[...time.options].some(o=>o.value===chosenTime)?chosenTime:'';
+}
+if($('#booking-form')){
+ refreshBookingChoices();$('#booking-form').elements.preferred_date.addEventListener('change',refreshBookingChoices);
+ $('#language-toggle').addEventListener('click',refreshBookingChoices);
+ window.addEventListener('focus',refreshBookingChoices);
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshBookingChoices();});
+}
 if($('#privacy-mode'))$('#privacy-mode').textContent=live?'Your session is kept in memory and ends when this page reloads. Sign out when finished.':'This preview stores sample entries only in this tab’s memory. It is not connected to the clinic.';
 function renderAccount(){if(user){$('#account').innerHTML=`<div class="toolbar"><strong>${staff?'Staff workspace':'Patient account'}</strong><span>${esc(user.email)}</span><button id="signout">Sign out</button></div>`;$('#signout').onclick=async()=>{if(live)try{await api('/auth/v1/logout',{method:'POST'})}catch{}token='';user=null;staff=false;renderAccount();$('#portal-content').innerHTML='';};renderPortal();return;}
 $('#account').innerHTML=`<div class="account-grid"><form id="login" class="panel"><h3>${live?'Sign in to your account':'Explore the working preview'}</h3>${live?'<label>Email<input name="email" type="email" required autocomplete="username"></label><label>Password<input name="password" type="password" required minlength="8" autocomplete="current-password"></label><div class="toolbar"><button class="button" type="submit">Sign in</button><button type="button" id="signup">Create patient account</button></div>':'<p class="notice">Use fictional data only. Preview roles demonstrate workflows without granting access to clinic data.</p><div class="toolbar"><button type="button" id="demo-patient">Patient preview</button><button type="button" id="demo-staff">Staff preview</button></div>'}<p id="auth-result" role="status"></p></form><aside><p class="eyebrow" style="color:#ffaddc">YOUR PATIENT PORTAL</p><h3>A smoother visit.<br>A clearer next step.</h3><p>Track requests and confirmations, read shared visit summaries, view bills, and send the clinic a message.</p><p>Staff can schedule visits, keep clinical notes and record payments through their authorised accounts.</p></aside></div>`;
@@ -28,7 +50,7 @@ if($('#booking-form'))$('#booking-form').onsubmit=e=>{
  e.preventDefault();const f=formData(e.target);
  const number=String(cfg.whatsappNumber||'').replace(/[^0-9]/g,'');
  if(!/^[1-9][0-9]{9,14}$/.test(number)){status('#booking-result','WhatsApp booking will be available once the clinic confirms its WhatsApp number. Please call +91 93694 63570 to request a visit.');return;}
- if(f.preferred_date<date()){status('#booking-result','Please choose today or a future date.');return;}
+ if(!clinicTimeOptions(f.preferred_date).includes(f.preferred_time)){refreshBookingChoices();status('#booking-result','Please choose an available date and time during clinic hours. Sundays and past times are unavailable.');return;}
  const hindi=window.ClinicLanguage?.language==='hi';
  const message=hindi?['नमस्ते डॉ. ए. खान क्लिनिक, मुझे अपॉइंटमेंट लेना है।','नाम: '+f.name,'मोबाइल: '+f.phone,'परामर्श: '+window.ClinicLanguage.t(f.service),'पसंदीदा तारीख: '+f.preferred_date,'पसंदीदा समय: '+f.preferred_time+' (भारतीय समय)','कृपया उपलब्धता और परामर्श शुल्क की पुष्टि करें।'].join('\n'):['Hello Dr. A. Khan clinic, I would like to request an appointment.','Name: '+f.name,'Mobile: '+f.phone,'Visit: '+f.service,'Preferred date: '+f.preferred_date,'Preferred time: '+f.preferred_time+' IST','Please confirm availability and the consultation fee.'].join('\n');
  const url='https://wa.me/'+number+'?text='+encodeURIComponent(message);
